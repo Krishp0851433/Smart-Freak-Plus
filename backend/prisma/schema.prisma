@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ai_chat {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  user_message String
+  ai_response  String
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ai_chat_user")
+
+  @@index([user_id], map: "idx_ai_chat_user")
+}
+
+model body_stats {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  weight      Decimal?  @db.Decimal(5, 2)
+  body_fat    Decimal?  @db.Decimal(5, 2)
+  muscle_mass Decimal?  @db.Decimal(5, 2)
+  bmi         Decimal?  @db.Decimal(5, 2)
+  recorded_at DateTime? @default(now()) @db.Timestamp(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_body_stats_user")
+
+  @@index([user_id], map: "idx_body_stats_user")
+}
+
+model diet_plans {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  plan_name      String?   @db.VarChar(255)
+  daily_calories Int?
+  protein_target Int?
+  carb_target    Int?
+  fat_target     Int?
+  created_by_ai  Boolean?  @default(false)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_diet_plan_user")
+}
+
+model exercise_logs {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String    @db.Uuid
+  exercise_id     String    @db.Uuid
+  sets            Int?
+  reps            Int?
+  weight_used     Decimal?  @db.Decimal(6, 2)
+  duration        Int?
+  calories_burned Decimal?  @db.Decimal(8, 2)
+  completed_at    DateTime? @default(now()) @db.Timestamp(6)
+  exercises       exercises @relation(fields: [exercise_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_exercise_log_exercise")
+  users           users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_exercise_log_user")
+
+  @@index([user_id], map: "idx_exercise_logs_user")
+}
+
+model exercises {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exercise_name    String          @db.VarChar(255)
+  category         String?         @db.VarChar(100)
+  muscle_group     String?         @db.VarChar(100)
+  video_url        String?
+  instructions     String?
+  calories_per_min Decimal?        @db.Decimal(5, 2)
+  difficulty       String?         @db.VarChar(50)
+  thumbnail        String?
+  created_at       DateTime?       @default(now()) @db.Timestamp(6)
+  exercise_logs    exercise_logs[]
+}
+
+model goals {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String    @db.Uuid
+  goal_name       String    @db.VarChar(255)
+  target_weight   Decimal?  @db.Decimal(5, 2)
+  target_calories Int?
+  target_date     DateTime? @db.Date
+  status          String?   @default("active") @db.VarChar(50)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  users           users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_goals_user")
+
+  @@index([user_id], map: "idx_goals_user")
+}
+
+model meal_logs {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id   String    @db.Uuid
+  meal_name String?   @db.VarChar(255)
+  calories  Int?
+  protein   Decimal?  @db.Decimal(8, 2)
+  carbs     Decimal?  @db.Decimal(8, 2)
+  fats      Decimal?  @db.Decimal(8, 2)
+  meal_time DateTime? @default(now()) @db.Timestamp(6)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_meal_log_user")
+
+  @@index([user_id], map: "idx_meal_logs_user")
+}
+
+model notifications {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  title      String?   @db.VarChar(255)
+  message    String?
+  is_read    Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_user")
+
+  @@index([user_id], map: "idx_notifications_user")
+}
+
+model users {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name      String           @db.VarChar(150)
+  email          String           @unique @db.VarChar(255)
+  password       String           @db.VarChar(255)
+  gender         String?          @db.VarChar(20)
+  date_of_birth  DateTime?        @db.Date
+  height         Decimal?         @db.Decimal(5, 2)
+  weight         Decimal?         @db.Decimal(5, 2)
+  goal_type      String?          @db.VarChar(50)
+  activity_level String?          @db.VarChar(50)
+  profile_image  String?
+  is_verified    Boolean?         @default(false)
+  created_at     DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?        @default(now()) @db.Timestamp(6)
+  ai_chat        ai_chat[]
+  body_stats     body_stats[]
+  diet_plans     diet_plans[]
+  exercise_logs  exercise_logs[]
+  goals          goals[]
+  meal_logs      meal_logs[]
+  notifications  notifications[]
+  water_tracking water_tracking[]
+  workout_plans  workout_plans[]
+
+  @@index([email], map: "idx_users_email")
+}
+
+model water_tracking {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id   String    @db.Uuid
+  amount_ml Int
+  logged_at DateTime? @default(now()) @db.Timestamp(6)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_water_user")
+
+  @@index([user_id], map: "idx_water_tracking_user")
+}
+
+model workout_days {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_plan_id String        @db.Uuid
+  day_name        String        @db.VarChar(20)
+  focus_area      String?       @db.VarChar(100)
+  workout_plans   workout_plans @relation(fields: [workout_plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_workout_day_plan")
+}
+
+model workout_plans {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String         @db.Uuid
+  plan_name     String         @db.VarChar(255)
+  goal_type     String?        @db.VarChar(100)
+  created_by_ai Boolean?       @default(false)
+  created_at    DateTime?      @default(now()) @db.Timestamp(6)
+  workout_days  workout_days[]
+  users         users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_workout_plan_user")
+
+  @@index([user_id], map: "idx_workout_plans_user")
+}
