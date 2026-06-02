@@ -4,8 +4,6 @@ const helmet = require("helmet");
 require("dotenv").config();
 
 const prisma = require("./config/prisma");
-
-// ADD THIS
 const authRoutes = require("./routes/auth.routes");
 
 const app = express();
@@ -14,10 +12,10 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
-// AUTH ROUTES
+
 app.use("/auth", authRoutes);
 
-// TEST ROUTE
+
 app.get("/", async (req, res) => {
   try {
     const users = await prisma.users.findMany();
@@ -38,5 +36,7 @@ app.get("/", async (req, res) => {
 });
 
 app.listen(5001, () => {
-  console.log("Server running on http://localhost:5001");
+  console.log(
+    "Server running on http://localhost:5001"
+  );
 });
