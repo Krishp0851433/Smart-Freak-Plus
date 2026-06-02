@@ -115,20 +115,21 @@ model notifications {
 }
 
 model users {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  full_name      String           @db.VarChar(150)
-  email          String           @unique @db.VarChar(255)
-  password       String           @db.VarChar(255)
-  gender         String?          @db.VarChar(20)
-  date_of_birth  DateTime?        @db.Date
-  height         Decimal?         @db.Decimal(5, 2)
-  weight         Decimal?         @db.Decimal(5, 2)
-  goal_type      String?          @db.VarChar(50)
-  activity_level String?          @db.VarChar(50)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name      String    @db.VarChar(150)
+  email          String    @unique @db.VarChar(255)
+  password       String    @db.VarChar(255)
+  gender         String?   @db.VarChar(20)
+  date_of_birth  DateTime? @db.Date
+  height         Decimal?  @db.Decimal(5, 2)
+  weight         Decimal?  @db.Decimal(5, 2)
+  goal_type      String?   @db.VarChar(50)
+  activity_level String?   @db.VarChar(50)
   profile_image  String?
-  is_verified    Boolean?         @default(false)
-  created_at     DateTime?        @default(now()) @db.Timestamp(6)
-  updated_at     DateTime?        @default(now()) @db.Timestamp(6)
+  is_verified    Boolean?  @default(false)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+
   ai_chat        ai_chat[]
   body_stats     body_stats[]
   diet_plans     diet_plans[]
@@ -139,7 +140,8 @@ model users {
   water_tracking water_tracking[]
   workout_plans  workout_plans[]
 
-  refresh_tokens refresh_tokens[]
+  refresh_tokens refresh_tokens[] @relation("UserRefreshTokens")
+  sessions       sessions[]       @relation("UserSessions")
 
   @@index([email], map: "idx_users_email")
 }
@@ -181,7 +183,23 @@ model refresh_tokens {
   token      String   @db.Text
   expires_at DateTime
 
-  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  users users @relation("UserRefreshTokens", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id], map: "idx_refresh_tokens_user")
+}
+
+model sessions {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String   @db.Uuid
+  refresh_token String   @db.Text
+  user_agent    String?  @db.Text
+  ip_address    String?
+  device_name   String?  @db.VarChar(255)
+  is_valid      Boolean  @default(true)
+  created_at    DateTime @default(now())
+  expires_at    DateTime
+
+  users users @relation("UserSessions", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id], map: "idx_sessions_user")
 }
