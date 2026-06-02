@@ -5,21 +5,36 @@ require("dotenv").config();
 
 const prisma = require("./config/prisma");
 
+// ADD THIS
+const authRoutes = require("./routes/auth.routes");
+
 const app = express();
 
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
+// AUTH ROUTES
+app.use("/auth", authRoutes);
+
 // TEST ROUTE
 app.get("/", async (req, res) => {
-  const users = await prisma.users.findMany();
+  try {
+    const users = await prisma.users.findMany();
 
-  res.json({
-    success: true,
-    usersCount: users.length,
-    data: users
-  });
+    res.json({
+      success: true,
+      usersCount: users.length,
+      data: users,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 });
 
 app.listen(5001, () => {
