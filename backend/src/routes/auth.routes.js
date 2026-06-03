@@ -7,7 +7,7 @@ const prisma = require("../config/prisma");
 
 
 // =========================
-// SIGNUP 
+// SIGNUP
 // =========================
 router.post("/signup", async (req, res) => {
   try {
@@ -90,27 +90,28 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // device info 
+    // device info
     const userAgent = req.headers["user-agent"] || "unknown";
-    const ip = req.ip || req.connection.remoteAddress;
+    const ip =
+      req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
 
-    // access token
+    // tokens
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "15m" }
     );
 
-    // refresh token (device specific)
     const refreshToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
 
+    // HASH refresh token before storing
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-    // CREATE SESSION (MULTI DEVICE SUPPORT)
+    // create session
     const session = await prisma.sessions.create({
       data: {
         user_id: user.id,
@@ -118,13 +119,21 @@ router.post("/login", async (req, res) => {
         user_agent: userAgent,
         ip_address: ip,
         device_name: userAgent,
+        is_valid: true,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, // true in production HTTPS
+      secure: false,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.cookie("sessionId", session.id, {
+      httpOnly: true,
+      secure: false,
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -176,16 +185,17 @@ router.get("/me", authMiddleware, async (req, res) => {
 
 
 // =========================
-// REFRESH TOKEN (PER DEVICE)
+// REFRESH TOKEN (DEVICE SAFE)
 // =========================
 router.post("/refresh", async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
+    const sessionId = req.cookies?.sessionId;
 
-    if (!token) {
+    if (!token || !sessionId) {
       return res.status(401).json({
         success: false,
-        message: "No refresh token",
+        message: "No refresh session",
       });
     }
 
@@ -200,18 +210,22 @@ router.post("/refresh", async (req, res) => {
     }
 
     const session = await prisma.sessions.findFirst({
-      where: {
-        user_id: decoded.userId,
-        is_valid: true,
-      },
-    });
-
-    if (!session) {
-      return res.status(403).json({
-        success: false,
-        message: "Session not found",
+        where: {
+          id: sessionId,
+          user_id: decoded.userId,
+          is_valid: true,
+          expires_at: {
+            gt: new Date(),
+          },
+        },
       });
-    }
+      
+      if (!session) {
+        return res.status(403).json({
+          success: false,
+          message: "Session not found or expired",
+        });
+      }
 
     const match = await bcrypt.compare(token, session.refresh_token);
 
@@ -226,14 +240,6 @@ router.post("/refresh", async (req, res) => {
       where: { id: decoded.userId },
     });
 
-    if (!user) {
-      return res.status(403).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // new tokens
     const newAccessToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET,
@@ -248,7 +254,6 @@ router.post("/refresh", async (req, res) => {
 
     const hashed = await bcrypt.hash(newRefreshToken, 10);
 
-    // UPDATE ONLY THIS SESSION (NOT ALL USERS)
     await prisma.sessions.update({
       where: { id: session.id },
       data: {
@@ -276,31 +281,34 @@ router.post("/refresh", async (req, res) => {
 
 
 // =========================
-// LOGOUT (SINGLE DEVICE)
+// LOGOUT SINGLE DEVICE
 // =========================
 router.post("/logout", async (req, res) => {
   try {
-    const token = req.cookies?.refreshToken;
+    const sessionId = req.cookies?.sessionId;
 
-    if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-
-      const session = await prisma.sessions.findFirst({
-        where: {
-          user_id: decoded.userId,
-          is_valid: true,
-        },
-      });
-
-      if (session) {
-        await prisma.sessions.update({
-          where: { id: session.id },
-          data: { is_valid: false },
-        });
-      }
+    if (sessionId) {
+        const result = await prisma.sessions.updateMany({
+            where: {
+              id: sessionId,
+              user_id: req.user.userId,
+              is_valid: true,
+            },
+            data: {
+              is_valid: false,
+            },
+          });
+          
+          if (result.count === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "Session not found",
+            });
+          }
     }
 
     res.clearCookie("refreshToken");
+    res.clearCookie("sessionId");
 
     res.json({
       success: true,
@@ -314,7 +322,7 @@ router.post("/logout", async (req, res) => {
 
 
 // =========================
-// GET ACTIVE SESSIONS 
+// GET ACTIVE SESSIONS
 // =========================
 router.get("/sessions", authMiddleware, async (req, res) => {
   try {
@@ -325,10 +333,13 @@ router.get("/sessions", authMiddleware, async (req, res) => {
       },
       select: {
         id: true,
-        user_agent: true,
+        device_name: true,
         ip_address: true,
         created_at: true,
         expires_at: true,
+      },
+      orderBy: {
+        created_at: "desc",
       },
     });
 
@@ -347,22 +358,38 @@ router.get("/sessions", authMiddleware, async (req, res) => {
 // LOGOUT SINGLE DEVICE BY ID
 // =========================
 router.post("/logout-device", authMiddleware, async (req, res) => {
-  try {
-    const { sessionId } = req.body;
-
-    await prisma.sessions.update({
-      where: { id: sessionId },
-      data: { is_valid: false },
-    });
-
-    res.json({
-      success: true,
-      message: "Device logged out",
-    });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    try {
+      const { sessionId } = req.body;
+  
+      const result = await prisma.sessions.updateMany({
+        where: {
+          id: sessionId,
+          user_id: req.user.userId,
+          is_valid: true,
+        },
+        data: {
+          is_valid: false,
+        },
+      });
+  
+      if (result.count === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Session not found",
+        });
+      }
+  
+      res.json({
+        success: true,
+        message: "Device logged out",
+      });
+  
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  });
 
 module.exports = router;
