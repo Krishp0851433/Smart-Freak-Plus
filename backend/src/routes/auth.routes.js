@@ -4,12 +4,12 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("../middleware/auth.middleware");
 const prisma = require("../config/prisma");
-
+const { authLimiter } = require("../middleware/rateLimit.middleware");
 
 // =========================
 // SIGNUP
 // =========================
-router.post("/signup", async (req, res) => {
+router.post("/signup", authLimiter, async (req, res) => {
   try {
     const {
       full_name,
@@ -66,7 +66,7 @@ router.post("/signup", async (req, res) => {
 // =========================
 // LOGIN (MULTI DEVICE SESSION)
 // =========================
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -187,7 +187,7 @@ router.get("/me", authMiddleware, async (req, res) => {
 // =========================
 // REFRESH TOKEN (DEVICE SAFE)
 // =========================
-router.post("/refresh", async (req, res) => {
+router.post("/refresh", authLimiter, async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
     const sessionId = req.cookies?.sessionId;

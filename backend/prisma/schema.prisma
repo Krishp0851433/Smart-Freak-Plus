@@ -143,6 +143,8 @@ model users {
   refresh_tokens refresh_tokens[] @relation("UserRefreshTokens")
   sessions       sessions[]       @relation("UserSessions")
 
+  password_reset_tokens password_reset_tokens[]
+
   @@index([email], map: "idx_users_email")
 }
 
@@ -202,4 +204,15 @@ model sessions {
   users users @relation("UserSessions", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id], map: "idx_sessions_user")
+}
+
+model password_reset_tokens {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  token      String   @db.Text
+  expires_at DateTime
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
