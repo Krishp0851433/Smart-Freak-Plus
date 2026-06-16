@@ -125,13 +125,17 @@ router.post("/login", authLimiter, async (req, res) => {
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "15m" }
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN,
+      }
     );
-
+    
     const refreshToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_REFRESH_SECRET,
-      { expiresIn: "7d" }
+      {
+        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+      }
     );
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
@@ -158,7 +162,7 @@ router.post("/login", authLimiter, async (req, res) => {
 
 
 // =========================
-// FORGOT PASSWORD (UPDATED ✅ EMAIL SENT)
+// FORGOT PASSWORD (UPDATED  EMAIL SENT)
 // =========================
 router.post("/forgot-password", async (req, res) => {
   try {
@@ -188,7 +192,7 @@ router.post("/forgot-password", async (req, res) => {
       },
     });
 
-    // 🔥 SEND EMAIL HERE
+    // SEND EMAIL HERE
     await sendResetEmail(user.email, token);
 
     res.json({
@@ -249,5 +253,36 @@ router.post("/reset-password", async (req, res) => {
     });
   }
 });
+// =========================
+// PROFILE (Protected Route)
+// =========================
+router.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.users.findUnique({
+      where: {
+        id: req.user.userId,
+      },
+      select: {
+        id: true,
+        full_name: true,
+        email: true,
+        gender: true,
+        height: true,
+        weight: true,
+        goal_type: true,
+        activity_level: true,
+      },
+    });
 
+    res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 module.exports = router;
