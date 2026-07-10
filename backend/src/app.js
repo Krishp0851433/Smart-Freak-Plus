@@ -6,7 +6,7 @@ require("dotenv").config();
 
 const prisma = require("./config/prisma");
 const authRoutes = require("./routes/auth.routes");
-
+const onboardingRoutes = require("./routes/onboarding.routes");
 const app = express(); // MUST BE FIRST
 
 // =========================
@@ -25,7 +25,7 @@ app.use(cookieParser()); // FIXED POSITION
 // ROUTES
 // =========================
 app.use("/auth", authRoutes);
-
+app.use("/onboarding", onboardingRoutes);
 // =========================
 // TEST ROUTE
 // =========================
