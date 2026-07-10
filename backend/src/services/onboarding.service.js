@@ -1,5 +1,5 @@
 const prisma = require("../config/prisma");
-
+const workoutService = require("./workout.service");
 
 // -----------------------------
 // Calculate Age
@@ -307,7 +307,10 @@ const completeOnboarding = async (
   } = result;
 
 
-
+  await workoutService.generateWorkoutPlan(
+    userId,
+    data.goal_type
+);
   return {
 
     user:
