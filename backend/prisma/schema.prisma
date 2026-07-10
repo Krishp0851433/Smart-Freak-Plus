@@ -133,7 +133,7 @@ model users {
   bmr               Int?
   daily_calories    Int?
   daily_water_goal  Int?
-
+  gym_level String? @db.VarChar(50)
   ai_chat        ai_chat[]
   body_stats     body_stats[]
   diet_plans     diet_plans[]

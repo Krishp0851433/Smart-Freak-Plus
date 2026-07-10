@@ -126,7 +126,6 @@ const calculateCalories = (
 };
 
 
-
 // -----------------------------
 // Calculate Water Intake
 // -----------------------------
@@ -240,6 +239,11 @@ const completeOnboarding = async (
 
             activity_level:
               data.activity_level,
+
+
+            // NEW FIELD
+            gym_level:
+              data.gym_level,
 
 
             bmr,
