@@ -8,7 +8,8 @@ const prisma = require("./config/prisma");
 const authRoutes = require("./routes/auth.routes");
 const onboardingRoutes = require("./routes/onboarding.routes");
 const app = express(); // MUST BE FIRST
-
+const dashboardRoutes = require("./routes/dashboard.routes");
+const exercisesRoutes = require("./routes/exercises.routes");
 // =========================
 // MIDDLEWARE
 // =========================
@@ -26,6 +27,8 @@ app.use(cookieParser()); // FIXED POSITION
 // =========================
 app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
+app.use("/dashboard", dashboardRoutes);
+app.use("/exercises", exercisesRoutes);
 // =========================
 // TEST ROUTE
 // =========================
