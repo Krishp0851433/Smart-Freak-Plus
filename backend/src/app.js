@@ -10,6 +10,7 @@ const onboardingRoutes = require("./routes/onboarding.routes");
 const app = express(); // MUST BE FIRST
 const dashboardRoutes = require("./routes/dashboard.routes");
 const exercisesRoutes = require("./routes/exercises.routes");
+const plannerRoutes = require("./routes/planner.routes");
 // =========================
 // MIDDLEWARE
 // =========================
@@ -29,6 +30,7 @@ app.use("/auth", authRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/exercises", exercisesRoutes);
+app.use("/planner", plannerRoutes);
 // =========================
 // TEST ROUTE
 // =========================
