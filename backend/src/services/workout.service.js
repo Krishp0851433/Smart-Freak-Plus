@@ -43,8 +43,9 @@ const workoutTemplates = {
 
 
 
+
 // --------------------------------
-// Assign Exercises To Workout Days
+// Assign Exercises
 // --------------------------------
 
 const assignExercisesToDays = async (workoutDays) => {
@@ -52,21 +53,17 @@ const assignExercisesToDays = async (workoutDays) => {
     for (const day of workoutDays) {
 
 
-        // Skip rest day
-
         if (day.focus_area === "REST") {
             continue;
         }
+
 
 
         const exercises =
             await prisma.exercises.findMany({
 
                 where: {
-
-                    muscle_group:
-                        day.focus_area
-
+                    muscle_group: day.focus_area
                 },
 
                 take: 5
@@ -82,7 +79,6 @@ const assignExercisesToDays = async (workoutDays) => {
             );
 
             continue;
-
         }
 
 
@@ -111,8 +107,7 @@ const assignExercisesToDays = async (workoutDays) => {
 
                     rest_seconds: 90,
 
-                    exercise_order:
-                        order
+                    exercise_order: order
 
                 }
 
@@ -129,6 +124,7 @@ const assignExercisesToDays = async (workoutDays) => {
 
 
 
+
 // --------------------------------
 // Generate Workout Plan
 // --------------------------------
@@ -138,60 +134,257 @@ const generateWorkoutPlan = async (
     goalType
 ) => {
 
-
-    const template =
-        workoutTemplates[goalType]
-        ||
-        workoutTemplates.MAINTAIN_WEIGHT;
+    try {
 
 
+        // Check existing plan
 
-    const workoutPlan =
-        await prisma.workout_plans.create({
+        const existingPlan =
+            await prisma.workout_plans.findFirst({
 
-            data: {
+                where: {
+                    user_id:userId
+                },
 
-                user_id:
-                    userId,
+                include:{
+                    workout_days:{
+                        include:{
+                            workout_day_exercises:{
+                                include:{
+                                    exercise:true
+                                }
+                            }
+                        }
+                    }
+                }
+
+            });
 
 
-                plan_name:
-                    `${goalType} Weekly Plan`,
+
+            if(existingPlan){
+
+                const days =
+                    await prisma.workout_days.findMany({
+            
+                        where:{
+                            workout_plan_id: existingPlan.id
+                        }
+            
+                    });
+            
+            
+                for(const day of days){
+            
+                    const count =
+                        await prisma.workout_day_exercises.count({
+            
+                            where:{
+                                workout_day_id: day.id
+                            }
+            
+                        });
+            
+            
+                    if(count === 0){
+            
+                        await assignExercisesToDays([day]);
+            
+                    }
+            
+                }
+            
+            
+                return await prisma.workout_plans.findUnique({
+            
+                    where:{
+                        id: existingPlan.id
+                    },
+            
+                    include:{
+            
+                        workout_days:{
+            
+                            include:{
+            
+                                workout_day_exercises:{
+            
+                                    include:{
+                                        exercise:true
+                                    }
+            
+                                }
+            
+                            }
+            
+                        }
+            
+                    }
+            
+                });
+            
+            }
 
 
-                goal_type:
-                    goalType,
+
+        const template =
+            workoutTemplates[goalType]
+            ||
+            workoutTemplates.MAINTAIN_WEIGHT;
 
 
-                created_by_ai:
-                    false,
 
 
-                workout_days: {
+        const workoutPlan =
+            await prisma.workout_plans.create({
 
-                    create:
-                        template
+                data:{
+
+
+                    user_id:userId,
+
+
+                    plan_name:
+                        `${goalType} Weekly Plan`,
+
+
+                    goal_type:
+                        goalType,
+
+
+                    created_by_ai:false,
+
+
+                    workout_days:{
+                        create:template
+                    }
 
                 }
 
+            });
+
+
+
+
+
+        const workoutDays =
+            await prisma.workout_days.findMany({
+
+                where:{
+                    workout_plan_id:
+                        workoutPlan.id
+                }
+
+            });
+
+
+
+
+
+        await assignExercisesToDays(
+            workoutDays
+        );
+
+
+
+
+
+        const finalPlan =
+            await prisma.workout_plans.findUnique({
+
+                where:{
+                    id:workoutPlan.id
+                },
+
+
+                include:{
+
+                    workout_days:{
+
+                        include:{
+
+                            workout_day_exercises:{
+
+                                include:{
+                                    exercise:true
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            });
+
+
+
+        return finalPlan;
+
+
+
+    } catch(error){
+
+        console.log(
+            "Workout generation error:",
+            error
+        );
+
+        throw error;
+
+    }
+
+};
+// --------------------------------
+// Get User Workout Plan
+// --------------------------------
+
+const getWorkoutPlan = async (userId) => {
+
+
+    const workoutPlan =
+        await prisma.workout_plans.findFirst({
+
+            where:{
+                user_id:userId
             },
 
 
-            include: {
+            include:{
 
-                workout_days:true
+                workout_days:{
+
+                    orderBy:{
+                        day_name:"asc"
+                    },
+
+
+                    include:{
+
+                        workout_day_exercises:{
+
+                            orderBy:{
+                                exercise_order:"asc"
+                            },
+
+
+                            include:{
+
+                                exercise:true
+
+                            }
+
+                        }
+
+                    }
+
+                }
 
             }
 
         });
-
-
-
-    // Assign exercises automatically
-
-    await assignExercisesToDays(
-        workoutPlan.workout_days
-    );
 
 
 
@@ -201,8 +394,11 @@ const generateWorkoutPlan = async (
 
 
 
+
+
 module.exports = {
 
-    generateWorkoutPlan
+    generateWorkoutPlan,
+    getWorkoutPlan
 
 };
