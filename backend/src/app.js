@@ -12,6 +12,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const exercisesRoutes = require("./routes/exercises.routes");
 const plannerRoutes = require("./routes/planner.routes");
 const workoutRoutes = require("./routes/workout.routes");
+const exerciseLogsRoutes = require("./routes/exerciseLogs.routes");
 // =========================
 // MIDDLEWARE
 // =========================
@@ -33,6 +34,7 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/exercises", exercisesRoutes);
 app.use("/planner", plannerRoutes);
 app.use("/workout",workoutRoutes);
+app.use("/exercise", exerciseLogsRoutes);
 // =========================
 // TEST ROUTE
 // =========================
