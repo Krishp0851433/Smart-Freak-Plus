@@ -18,6 +18,7 @@ const mealRoutes = require("./routes/meal.routes");
 const waterRoutes = require("./routes/water.routes");
 const bodyStatsRoutes = require("./routes/bodyStats.routes");
 const aiRoutes = require("./routes/ai.routes");
+const notificationRoutes = require("./routes/notification.routes");
 // =========================
 // MIDDLEWARE
 // =========================
@@ -45,6 +46,7 @@ app.use("/meal",mealRoutes);
 app.use("/water",waterRoutes);
 app.use("/body", bodyStatsRoutes);
 app.use("/ai", aiRoutes);
+app.use("/notifications", notificationRoutes);
 // =========================
 // TEST ROUTE
 // =========================
