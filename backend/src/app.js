@@ -15,6 +15,7 @@ const workoutRoutes = require("./routes/workout.routes");
 const exerciseLogsRoutes = require("./routes/exerciseLogs.routes");
 const dietRoutes = require("./routes/diet.routes");
 const mealRoutes = require("./routes/meal.routes");
+const waterRoutes = require("./routes/water.routes");
 // =========================
 // MIDDLEWARE
 // =========================
@@ -39,6 +40,7 @@ app.use("/workout",workoutRoutes);
 app.use("/exercise", exerciseLogsRoutes);
 app.use("/diet", dietRoutes);
 app.use("/meal",mealRoutes);
+app.use("/water",waterRoutes);
 // =========================
 // TEST ROUTE
 // =========================
